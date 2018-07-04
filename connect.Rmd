@@ -8,11 +8,60 @@ When you save the notebook, an HTML file containing the code and output will be 
 library(SparkR)
 sparkR.session()
 
+install.packages()
+```
+
+```{r}
+library(dplyr)
+library(sparklyr)
+
+sc <- spark_connect(method = "databricks")
+src_tbls(sc)
+print(sales_tbl,n=5, width = Inf)
+sales_tbl = tbl(sc,"tbl_sales")
+glimpse(sales_tbl)
+str(sales_tbl)
+dim(sales_tbl)
+```
+
+```{r}
+sales_tbl %>%
+  select(`0COMP_CODE`, `0CALWEEK`,ZCB_S_V01) %>%
+  filter(`0COMP_CODE` == "B001", `0CALWEEK`>=201801, `0CALWEEK`<=201803) %>%
+  arrange(`0CALWEEK`) %>%
+  mutate(vol = ZCB_S_V01 * 100) %>%
+  summarize(volume = sum(vol,na.rm = TRUE))
+
 
 ```
 
 ```{r}
-library(sparklyr)
-sc <- spark_connect(method = "databricks")
+sales_tbl %>%
+  filter(`0CALWEEK`>=201801, `0CALWEEK`<=201803) %>%
+  group_by(`0COMP_CODE`, `0CALWEEK`)%>%
+  mutate(vol = ZCB_S_V01 * 100) %>%
+  summarize(volume = sum(vol,na.rm = TRUE)) 
+
+```
+
+```{r}
+summary_tbl<-sales_tbl %>%
+  group_by(`0COMP_CODE`)%>%
+  mutate(vol = ZCB_S_V01 * 100) %>%
+  summarize(volume = sum(vol,na.rm = TRUE)) %>%
+  compute("ccsummary")
+
+summa<-sales_tbl %>%
+  group_by(`0COMP_CODE`)%>%
+  mutate(vol = ZCB_S_V01 * 100) %>%
+  summarize(volume = sum(vol,na.rm = TRUE)) 
+
+```
+
+
+
+```{r}
+joined <- left_join(sales_tbl, summa, by = c("0COMP_CODE"))
+print(joined, n=10)
 ```
 
